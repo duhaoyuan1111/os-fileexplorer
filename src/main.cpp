@@ -27,7 +27,7 @@ typedef struct AppData {
 
 void initialize(SDL_Renderer *renderer, AppData *data_ptr);
 void render(SDL_Renderer *renderer, AppData *data_ptr);
-void listDirectory(std::string dirname, int loop, SDL_Rect startRect, SDL_Renderer *renderer, AppData *data_ptr);
+int listDirectory(std::string dirname, int loop, SDL_Rect startRect, SDL_Renderer *renderer, AppData *data_ptr);
 
 int main(int argc, char **argv)
 {
@@ -53,8 +53,20 @@ int main(int argc, char **argv)
     while (event.type != SDL_QUIT)
     {
         SDL_WaitEvent(&event);
-
-        //render(renderer, &data);
+        switch (event.type) {
+            case SDL_MOUSEBUTTONDOWN: // click
+                if (event.button.button == SDL_BUTTON_LEFT) {
+                    
+                }
+                break;
+            case SDL_MOUSEMOTION: // move
+                if (event.motion.x >= 20 && event.motion.x <= 400 && event.motion.y >= 40 && event.motion.y <= 65) {
+                    
+                }
+                //render(renderer, &data);
+                break;
+        }
+        
     }
 
     // clean up
@@ -110,7 +122,7 @@ void render(SDL_Renderer *renderer, AppData *data_ptr)
     SDL_RenderPresent(renderer);
 }
 
-void listDirectory(std::string dirname, int loop, SDL_Rect startRect, SDL_Renderer *renderer, AppData *data_ptr)
+int listDirectory(std::string dirname, int loop, SDL_Rect startRect, SDL_Renderer *renderer, AppData *data_ptr)
 {
     struct stat info;
 
@@ -137,6 +149,7 @@ void listDirectory(std::string dirname, int loop, SDL_Rect startRect, SDL_Render
                 if (file_err) {
                     fprintf(stderr, "Uh oh! Should not get here\n");
                 } else if (S_ISDIR(file_info.st_mode)) {
+                    startRect.x += 20 * loop;
                     SDL_RenderCopy(renderer, data_ptr->dir, NULL, &startRect);
                     startRect.x += 30;
                     SDL_Color color = {0, 0, 0};
@@ -147,13 +160,36 @@ void listDirectory(std::string dirname, int loop, SDL_Rect startRect, SDL_Render
                     SDL_RenderCopy(renderer, dir_string, NULL, &startRect);
                     startRect.w = 20;
                     startRect.h = 20;
+                    int old_x = startRect.x;
+                    startRect.x = 600;
+                    char *modeval = (char*)malloc(sizeof(char) * 9 + 1);
+                    modeval[0] = (file_info.st_mode & S_IRUSR) ? 'r' : '-';
+                    modeval[1] = (file_info.st_mode & S_IWUSR) ? 'w' : '-';
+                    modeval[2] = (file_info.st_mode & S_IXUSR) ? 'x' : '-';
+                    modeval[3] = (file_info.st_mode & S_IRGRP) ? 'r' : '-';
+                    modeval[4] = (file_info.st_mode & S_IWGRP) ? 'w' : '-';
+                    modeval[5] = (file_info.st_mode & S_IXGRP) ? 'x' : '-';
+                    modeval[6] = (file_info.st_mode & S_IROTH) ? 'r' : '-';
+                    modeval[7] = (file_info.st_mode & S_IWOTH) ? 'w' : '-';
+                    modeval[8] = (file_info.st_mode & S_IXOTH) ? 'x' : '-';
+                    modeval[9] = '\0';
+                    SDL_Surface *permit_surf = TTF_RenderText_Solid(data_ptr->font, modeval, color);
+                    SDL_Texture *permit_string= SDL_CreateTextureFromSurface(renderer, permit_surf);
+                    SDL_FreeSurface(permit_surf);
+                    SDL_QueryTexture(permit_string, NULL, NULL, &(startRect.w), &(startRect.h));
+                    SDL_RenderCopy(renderer, permit_string, NULL, &startRect);
+                    startRect.w = 20;
+                    startRect.h = 20;
                     startRect.y += 25;
+                    startRect.x = old_x;
                     startRect.x -= 30;
-                    //if (file_list[i] != "." && file_list[i] != "..") {
-                        //listDirectory(full_path, loop+1, textRectNew, renderer);
-                    //}
+                    startRect.x -= 20 * loop;
+                    if (file_list[i] != "." && file_list[i] != "..") {
+                        startRect.y = listDirectory(full_path, loop+1, startRect, renderer, data_ptr);
+                    }
                     
                 } else if ((S_IEXEC & file_info.st_mode) != 0) {
+                    startRect.x += 20 * loop;
                     SDL_RenderCopy(renderer, data_ptr->exe, NULL, &startRect);
                     startRect.x += 30;
                     SDL_Color color = {0, 0, 0};
@@ -164,22 +200,114 @@ void listDirectory(std::string dirname, int loop, SDL_Rect startRect, SDL_Render
                     SDL_RenderCopy(renderer, file_string, NULL, &startRect);
                     startRect.w = 20;
                     startRect.h = 20;
+                    int old_x = startRect.x;
+                    startRect.x = 500;
+                    int temp;
+                    std::string file_size;
+                    if (file_info.st_size >= 10732109824) {
+                        temp = file_info.st_size / 10732109824;
+                        file_size = std::to_string(temp) + " GB";
+                    } else if (file_info.st_size >= 10480576) {
+                        temp = file_info.st_size / 10480576;
+                        file_size = std::to_string(temp) + " MB";
+                    } else if (file_info.st_size >= 1024) {
+                        temp = file_info.st_size / 1024;
+                        file_size = std::to_string(temp) + " KB";
+                    } else {
+                        temp = file_info.st_size;
+                        file_size = std::to_string(temp) + " B";
+                    }
+                    SDL_Surface *size_surf = TTF_RenderText_Solid(data_ptr->font, file_size.c_str(), color);
+                    SDL_Texture *size_string= SDL_CreateTextureFromSurface(renderer, size_surf);
+                    SDL_FreeSurface(size_surf);
+                    SDL_QueryTexture(size_string, NULL, NULL, &(startRect.w), &(startRect.h));
+                    SDL_RenderCopy(renderer, size_string, NULL, &startRect);
+                    startRect.w = 20;
+                    startRect.h = 20;
+                    startRect.x = 600;
+                    char *modeval = (char*)malloc(sizeof(char) * 9 + 1);
+                    modeval[0] = (file_info.st_mode & S_IRUSR) ? 'r' : '-';
+                    modeval[1] = (file_info.st_mode & S_IWUSR) ? 'w' : '-';
+                    modeval[2] = (file_info.st_mode & S_IXUSR) ? 'x' : '-';
+                    modeval[3] = (file_info.st_mode & S_IRGRP) ? 'r' : '-';
+                    modeval[4] = (file_info.st_mode & S_IWGRP) ? 'w' : '-';
+                    modeval[5] = (file_info.st_mode & S_IXGRP) ? 'x' : '-';
+                    modeval[6] = (file_info.st_mode & S_IROTH) ? 'r' : '-';
+                    modeval[7] = (file_info.st_mode & S_IWOTH) ? 'w' : '-';
+                    modeval[8] = (file_info.st_mode & S_IXOTH) ? 'x' : '-';
+                    modeval[9] = '\0';
+                    SDL_Surface *permit_surf = TTF_RenderText_Solid(data_ptr->font, modeval, color);
+                    SDL_Texture *permit_string= SDL_CreateTextureFromSurface(renderer, permit_surf);
+                    SDL_FreeSurface(permit_surf);
+                    SDL_QueryTexture(permit_string, NULL, NULL, &(startRect.w), &(startRect.h));
+                    SDL_RenderCopy(renderer, permit_string, NULL, &startRect);
+                    startRect.w = 20;
+                    startRect.h = 20;
                     startRect.y += 25;
+                    startRect.x = old_x;
                     startRect.x -= 30;
+                    startRect.x -= 20 * loop;
                 } else if (file_list[i].substr(file_list[i].find_last_of(".") + 1) == "jpg" || file_list[i].substr(file_list[i].find_last_of(".") + 1) == "jpeg" || file_list[i].substr(file_list[i].find_last_of(".") + 1) == "png" || file_list[i].substr(file_list[i].find_last_of(".") + 1) == "tif" || file_list[i].substr(file_list[i].find_last_of(".") + 1) == "tiff" || file_list[i].substr(file_list[i].find_last_of(".") + 1) == "gif") {
-                    SDL_RenderCopy(renderer, data_ptr->image, NULL, &startRect);
+                    startRect.x += 20 * loop;
+                    SDL_RenderCopy(renderer, data_ptr->image, NULL, &startRect); // icon
                     startRect.x += 30;
                     SDL_Color color = {0, 0, 0};
                     SDL_Surface *file_surf = TTF_RenderText_Solid(data_ptr->font, file_list[i].c_str(), color);
                     SDL_Texture *file_string= SDL_CreateTextureFromSurface(renderer, file_surf);
                     SDL_FreeSurface(file_surf);
                     SDL_QueryTexture(file_string, NULL, NULL, &(startRect.w), &(startRect.h));
-                    SDL_RenderCopy(renderer, file_string, NULL, &startRect);
+                    SDL_RenderCopy(renderer, file_string, NULL, &startRect); // text
+                    startRect.w = 20;
+                    startRect.h = 20;
+                    int old_x = startRect.x;
+                    startRect.x = 500;
+                    int temp;
+                    std::string file_size;
+                    if (file_info.st_size >= 10732109824) {
+                        temp = file_info.st_size / 10732109824;
+                        file_size = std::to_string(temp) + " GB";
+                    } else if (file_info.st_size >= 10480576) {
+                        temp = file_info.st_size / 10480576;
+                        file_size = std::to_string(temp) + " MB";
+                    } else if (file_info.st_size >= 1024) {
+                        temp = file_info.st_size / 1024;
+                        file_size = std::to_string(temp) + " KB";
+                    } else {
+                        temp = file_info.st_size;
+                        file_size = std::to_string(temp) + " B";
+                    }
+                    SDL_Surface *size_surf = TTF_RenderText_Solid(data_ptr->font, file_size.c_str(), color);
+                    SDL_Texture *size_string= SDL_CreateTextureFromSurface(renderer, size_surf);
+                    SDL_FreeSurface(size_surf);
+                    SDL_QueryTexture(size_string, NULL, NULL, &(startRect.w), &(startRect.h));
+                    SDL_RenderCopy(renderer, size_string, NULL, &startRect);
+                    startRect.w = 20;
+                    startRect.h = 20;
+                    startRect.x = 600;
+                    char *modeval = (char*)malloc(sizeof(char) * 9 + 1);
+                    modeval[0] = (file_info.st_mode & S_IRUSR) ? 'r' : '-';
+                    modeval[1] = (file_info.st_mode & S_IWUSR) ? 'w' : '-';
+                    modeval[2] = (file_info.st_mode & S_IXUSR) ? 'x' : '-';
+                    modeval[3] = (file_info.st_mode & S_IRGRP) ? 'r' : '-';
+                    modeval[4] = (file_info.st_mode & S_IWGRP) ? 'w' : '-';
+                    modeval[5] = (file_info.st_mode & S_IXGRP) ? 'x' : '-';
+                    modeval[6] = (file_info.st_mode & S_IROTH) ? 'r' : '-';
+                    modeval[7] = (file_info.st_mode & S_IWOTH) ? 'w' : '-';
+                    modeval[8] = (file_info.st_mode & S_IXOTH) ? 'x' : '-';
+                    modeval[9] = '\0';
+                    SDL_Surface *permit_surf = TTF_RenderText_Solid(data_ptr->font, modeval, color);
+                    SDL_Texture *permit_string= SDL_CreateTextureFromSurface(renderer, permit_surf);
+                    SDL_FreeSurface(permit_surf);
+                    SDL_QueryTexture(permit_string, NULL, NULL, &(startRect.w), &(startRect.h));
+                    SDL_RenderCopy(renderer, permit_string, NULL, &startRect);
                     startRect.w = 20;
                     startRect.h = 20;
                     startRect.y += 25;
+                    startRect.x = old_x;
                     startRect.x -= 30;
+                    startRect.x -= 20 * loop;
                 } else if (file_list[i].substr(file_list[i].find_last_of(".") + 1) == "mp4" || file_list[i].substr(file_list[i].find_last_of(".") + 1) == "mov" || file_list[i].substr(file_list[i].find_last_of(".") + 1) == "mkv" || file_list[i].substr(file_list[i].find_last_of(".") + 1) == "avi" || file_list[i].substr(file_list[i].find_last_of(".") + 1) == "webm") {
+                    startRect.x += 20 * loop;
                     SDL_RenderCopy(renderer, data_ptr->video, NULL, &startRect);
                     startRect.x += 30;
                     SDL_Color color = {0, 0, 0};
@@ -190,9 +318,55 @@ void listDirectory(std::string dirname, int loop, SDL_Rect startRect, SDL_Render
                     SDL_RenderCopy(renderer, file_string, NULL, &startRect);
                     startRect.w = 20;
                     startRect.h = 20;
+                    int old_x = startRect.x;
+                    startRect.x = 500;
+                    int temp;
+                    std::string file_size;
+                    if (file_info.st_size >= 10732109824) {
+                        temp = file_info.st_size / 10732109824;
+                        file_size = std::to_string(temp) + " GB";
+                    } else if (file_info.st_size >= 10480576) {
+                        temp = file_info.st_size / 10480576;
+                        file_size = std::to_string(temp) + " MB";
+                    } else if (file_info.st_size >= 1024) {
+                        temp = file_info.st_size / 1024;
+                        file_size = std::to_string(temp) + " KB";
+                    } else {
+                        temp = file_info.st_size;
+                        file_size = std::to_string(temp) + " B";
+                    }
+                    SDL_Surface *size_surf = TTF_RenderText_Solid(data_ptr->font, file_size.c_str(), color);
+                    SDL_Texture *size_string= SDL_CreateTextureFromSurface(renderer, size_surf);
+                    SDL_FreeSurface(size_surf);
+                    SDL_QueryTexture(size_string, NULL, NULL, &(startRect.w), &(startRect.h));
+                    SDL_RenderCopy(renderer, size_string, NULL, &startRect);
+                    startRect.w = 20;
+                    startRect.h = 20;
+                    startRect.x = 600;
+                    char *modeval = (char*)malloc(sizeof(char) * 9 + 1);
+                    modeval[0] = (file_info.st_mode & S_IRUSR) ? 'r' : '-';
+                    modeval[1] = (file_info.st_mode & S_IWUSR) ? 'w' : '-';
+                    modeval[2] = (file_info.st_mode & S_IXUSR) ? 'x' : '-';
+                    modeval[3] = (file_info.st_mode & S_IRGRP) ? 'r' : '-';
+                    modeval[4] = (file_info.st_mode & S_IWGRP) ? 'w' : '-';
+                    modeval[5] = (file_info.st_mode & S_IXGRP) ? 'x' : '-';
+                    modeval[6] = (file_info.st_mode & S_IROTH) ? 'r' : '-';
+                    modeval[7] = (file_info.st_mode & S_IWOTH) ? 'w' : '-';
+                    modeval[8] = (file_info.st_mode & S_IXOTH) ? 'x' : '-';
+                    modeval[9] = '\0';
+                    SDL_Surface *permit_surf = TTF_RenderText_Solid(data_ptr->font, modeval, color);
+                    SDL_Texture *permit_string= SDL_CreateTextureFromSurface(renderer, permit_surf);
+                    SDL_FreeSurface(permit_surf);
+                    SDL_QueryTexture(permit_string, NULL, NULL, &(startRect.w), &(startRect.h));
+                    SDL_RenderCopy(renderer, permit_string, NULL, &startRect);
+                    startRect.w = 20;
+                    startRect.h = 20;
                     startRect.y += 25;
+                    startRect.x = old_x;
                     startRect.x -= 30;
+                    startRect.x -= 20 * loop;
                 } else if (file_list[i].substr(file_list[i].find_last_of(".") + 1) == "h" || file_list[i].substr(file_list[i].find_last_of(".") + 1) == "c" || file_list[i].substr(file_list[i].find_last_of(".") + 1) == "cpp" || file_list[i].substr(file_list[i].find_last_of(".") + 1) == "py" || file_list[i].substr(file_list[i].find_last_of(".") + 1) == "java" || file_list[i].substr(file_list[i].find_last_of(".") + 1) == "js") {
+                    startRect.x += 20 * loop;
                     SDL_RenderCopy(renderer, data_ptr->code, NULL, &startRect);
                     startRect.x += 30;
                     SDL_Color color = {0, 0, 0};
@@ -203,9 +377,55 @@ void listDirectory(std::string dirname, int loop, SDL_Rect startRect, SDL_Render
                     SDL_RenderCopy(renderer, file_string, NULL, &startRect);
                     startRect.w = 20;
                     startRect.h = 20;
+                    int old_x = startRect.x;
+                    startRect.x = 500;
+                    int temp;
+                    std::string file_size;
+                    if (file_info.st_size >= 10732109824) {
+                        temp = file_info.st_size / 10732109824;
+                        file_size = std::to_string(temp) + " GB";
+                    } else if (file_info.st_size >= 10480576) {
+                        temp = file_info.st_size / 10480576;
+                        file_size = std::to_string(temp) + " MB";
+                    } else if (file_info.st_size >= 1024) {
+                        temp = file_info.st_size / 1024;
+                        file_size = std::to_string(temp) + " KB";
+                    } else {
+                        temp = file_info.st_size;
+                        file_size = std::to_string(temp) + " B";
+                    }
+                    SDL_Surface *size_surf = TTF_RenderText_Solid(data_ptr->font, file_size.c_str(), color);
+                    SDL_Texture *size_string= SDL_CreateTextureFromSurface(renderer, size_surf);
+                    SDL_FreeSurface(size_surf);
+                    SDL_QueryTexture(size_string, NULL, NULL, &(startRect.w), &(startRect.h));
+                    SDL_RenderCopy(renderer, size_string, NULL, &startRect);
+                    startRect.w = 20;
+                    startRect.h = 20;
+                    startRect.x = 600;
+                    char *modeval = (char*)malloc(sizeof(char) * 9 + 1);
+                    modeval[0] = (file_info.st_mode & S_IRUSR) ? 'r' : '-';
+                    modeval[1] = (file_info.st_mode & S_IWUSR) ? 'w' : '-';
+                    modeval[2] = (file_info.st_mode & S_IXUSR) ? 'x' : '-';
+                    modeval[3] = (file_info.st_mode & S_IRGRP) ? 'r' : '-';
+                    modeval[4] = (file_info.st_mode & S_IWGRP) ? 'w' : '-';
+                    modeval[5] = (file_info.st_mode & S_IXGRP) ? 'x' : '-';
+                    modeval[6] = (file_info.st_mode & S_IROTH) ? 'r' : '-';
+                    modeval[7] = (file_info.st_mode & S_IWOTH) ? 'w' : '-';
+                    modeval[8] = (file_info.st_mode & S_IXOTH) ? 'x' : '-';
+                    modeval[9] = '\0';
+                    SDL_Surface *permit_surf = TTF_RenderText_Solid(data_ptr->font, modeval, color);
+                    SDL_Texture *permit_string= SDL_CreateTextureFromSurface(renderer, permit_surf);
+                    SDL_FreeSurface(permit_surf);
+                    SDL_QueryTexture(permit_string, NULL, NULL, &(startRect.w), &(startRect.h));
+                    SDL_RenderCopy(renderer, permit_string, NULL, &startRect);
+                    startRect.w = 20;
+                    startRect.h = 20;
                     startRect.y += 25;
+                    startRect.x = old_x;
                     startRect.x -= 30;
+                    startRect.x -= 20 * loop;
                 } else {
+                    startRect.x += 20 * loop;
                     SDL_RenderCopy(renderer, data_ptr->other, NULL, &startRect);
                     startRect.x += 30;
                     SDL_Color color = {0, 0, 0};
@@ -216,16 +436,63 @@ void listDirectory(std::string dirname, int loop, SDL_Rect startRect, SDL_Render
                     SDL_RenderCopy(renderer, file_string, NULL, &startRect);
                     startRect.w = 20;
                     startRect.h = 20;
+                    int old_x = startRect.x;
+                    startRect.x = 500;
+                    int temp;
+                    std::string file_size;
+                    if (file_info.st_size >= 10732109824) {
+                        temp = file_info.st_size / 10732109824;
+                        file_size = std::to_string(temp) + " GB";
+                    } else if (file_info.st_size >= 10480576) {
+                        temp = file_info.st_size / 10480576;
+                        file_size = std::to_string(temp) + " MB";
+                    } else if (file_info.st_size >= 1024) {
+                        temp = file_info.st_size / 1024;
+                        file_size = std::to_string(temp) + " KB";
+                    } else {
+                        temp = file_info.st_size;
+                        file_size = std::to_string(temp) + " B";
+                    }
+                    SDL_Surface *size_surf = TTF_RenderText_Solid(data_ptr->font, file_size.c_str(), color);
+                    SDL_Texture *size_string= SDL_CreateTextureFromSurface(renderer, size_surf);
+                    SDL_FreeSurface(size_surf);
+                    SDL_QueryTexture(size_string, NULL, NULL, &(startRect.w), &(startRect.h));
+                    SDL_RenderCopy(renderer, size_string, NULL, &startRect);
+                    startRect.w = 20;
+                    startRect.h = 20;
+                    startRect.x = 600;
+                    char *modeval = (char*)malloc(sizeof(char) * 9 + 1);
+                    modeval[0] = (file_info.st_mode & S_IRUSR) ? 'r' : '-';
+                    modeval[1] = (file_info.st_mode & S_IWUSR) ? 'w' : '-';
+                    modeval[2] = (file_info.st_mode & S_IXUSR) ? 'x' : '-';
+                    modeval[3] = (file_info.st_mode & S_IRGRP) ? 'r' : '-';
+                    modeval[4] = (file_info.st_mode & S_IWGRP) ? 'w' : '-';
+                    modeval[5] = (file_info.st_mode & S_IXGRP) ? 'x' : '-';
+                    modeval[6] = (file_info.st_mode & S_IROTH) ? 'r' : '-';
+                    modeval[7] = (file_info.st_mode & S_IWOTH) ? 'w' : '-';
+                    modeval[8] = (file_info.st_mode & S_IXOTH) ? 'x' : '-';
+                    modeval[9] = '\0';
+                    SDL_Surface *permit_surf = TTF_RenderText_Solid(data_ptr->font, modeval, color);
+                    SDL_Texture *permit_string= SDL_CreateTextureFromSurface(renderer, permit_surf);
+                    SDL_FreeSurface(permit_surf);
+                    SDL_QueryTexture(permit_string, NULL, NULL, &(startRect.w), &(startRect.h));
+                    SDL_RenderCopy(renderer, permit_string, NULL, &startRect);
+                    startRect.w = 20;
+                    startRect.h = 20;
                     startRect.y += 25;
+                    startRect.x = old_x;
                     startRect.x -= 30;
+                    startRect.x -= 20 * loop;
                 }
                 SDL_RenderPresent(renderer);
+                
             }
             
         }
-    }
-    else {
+        return startRect.y;
+    } else {
         fprintf(stderr, "Error: directory '%s' not found\n", dirname.c_str());
+        return 0;
     }
 }
 
