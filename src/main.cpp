@@ -26,6 +26,7 @@ typedef struct AppData {
     SDL_Texture *up;
     SDL_Texture *down;
     std::map<std::string, std::string> map;
+    bool open_flag = false;
 
 } AppData;
 
@@ -68,8 +69,50 @@ int main(int argc, char **argv)
                     //printf("%d\n", real_y_key);
                     size_t pos = 0;
                     std::string delimiter = "|";
-                    std::string value = data.map[std::to_string(real_y_key).c_str()];
-                    if (!data.map[std::to_string(real_y_key).c_str()].empty()) {
+                    std::string value;
+                    //printf("%s\n", data.map["0"].c_str());
+                    if (event.button.y >= 15 && event.button.y <= 40 && event.button.x >= 750 && event.button.x <= 775) {
+                        //printf("It's here!!!\n");
+                        if (data.open_flag) {
+                            data.open_flag = false;
+                            value = data.map["0"];
+                            pos = value.find(delimiter);
+                            value.erase(0, pos + delimiter.length());
+                            pos = value.find(delimiter);
+                            value.erase(0, pos + delimiter.length());
+                            std::string same_dir = value;
+                            if (same_dir.back() == '.') {
+                                same_dir.pop_back();
+                                if (same_dir.back() == '.') {
+                                    same_dir.pop_back();
+                                    if (same_dir.back() == '/') {
+                                        same_dir.pop_back();
+                                    }
+                                }
+                            }
+                            //printf("%s\n", same_dir.c_str());
+                            render(renderer, &data, same_dir);
+                        } else {
+                            data.open_flag = true;
+                            value = data.map["0"];
+                            pos = value.find(delimiter);
+                            value.erase(0, pos + delimiter.length());
+                            pos = value.find(delimiter);
+                            value.erase(0, pos + delimiter.length());
+                            std::string same_dir = value;
+                            if (same_dir.back() == '.') {
+                                same_dir.pop_back();
+                                if (same_dir.back() == '.') {
+                                    same_dir.pop_back();
+                                    if (same_dir.back() == '/') {
+                                        same_dir.pop_back();
+                                    }
+                                }
+                            }
+                            render(renderer, &data, same_dir);
+                        }
+                    } else if (!data.map[std::to_string(real_y_key).c_str()].empty()) {
+                        value = data.map[std::to_string(real_y_key).c_str()];
                         pos = value.find(delimiter);
                         std::string start_x = value.substr(0, pos); // start x
                         value.erase(0, pos + delimiter.length());
@@ -86,6 +129,7 @@ int main(int argc, char **argv)
                             render(renderer, &data, value);
                         }
                     }
+                    
                     
                 }
                 break;
@@ -234,6 +278,7 @@ int listDirectory(std::string dirname, int loop, SDL_Rect startRect, SDL_Rendere
                         data_ptr->map[key] = std::to_string(start_x) + "|" + std::to_string(end_x) + "|" + full_path;
                         //printf("%s , %s\n", key.c_str(), data_ptr->map[key].c_str());
                     }
+                    //printf("%s\n", data_ptr->map["0"].c_str());
                     startRect.x = 600;
                     startRect.w = 20;
                     startRect.h = 20;
@@ -259,7 +304,7 @@ int listDirectory(std::string dirname, int loop, SDL_Rect startRect, SDL_Rendere
                     startRect.x = old_x;
                     startRect.x -= 30;
                     startRect.x -= 20 * loop;
-                    if (file_list[i] != "." && file_list[i] != "..") {
+                    if (file_list[i] != "." && file_list[i] != ".." && data_ptr->open_flag) {
                         startRect.y = listDirectory(full_path, loop+1, startRect, renderer, data_ptr);
                     }
                     
