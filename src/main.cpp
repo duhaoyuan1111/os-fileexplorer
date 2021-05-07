@@ -7,6 +7,7 @@
 #include <dirent.h>
 #include <algorithm>
 #include <sys/stat.h>
+#include <map>
 
 
 #define WIDTH 800
@@ -21,12 +22,16 @@ typedef struct AppData {
     SDL_Texture *code;
     SDL_Texture *other;
     SDL_Texture *textString;
+    SDL_Texture *open;
+    SDL_Texture *up;
+    SDL_Texture *down;
+    std::map<std::string, std::string> map;
 
 } AppData;
 
 
 void initialize(SDL_Renderer *renderer, AppData *data_ptr);
-void render(SDL_Renderer *renderer, AppData *data_ptr);
+void render(SDL_Renderer *renderer, AppData *data_ptr, std::string dir);
 int listDirectory(std::string dirname, int loop, SDL_Rect startRect, SDL_Renderer *renderer, AppData *data_ptr);
 
 int main(int argc, char **argv)
@@ -46,8 +51,11 @@ int main(int argc, char **argv)
 
     // initialize and perform rendering loop
     AppData data;
+    
+    std::string dirname(home);
+    //std::string dirname = "/home/duke/Desktop";
     initialize(renderer, &data);
-    render(renderer, &data);
+    render(renderer, &data, dirname);
     SDL_Event event;
     SDL_WaitEvent(&event);
     while (event.type != SDL_QUIT)
@@ -56,13 +64,33 @@ int main(int argc, char **argv)
         switch (event.type) {
             case SDL_MOUSEBUTTONDOWN: // click
                 if (event.button.button == SDL_BUTTON_LEFT) {
+                    int real_y_key = floor((double)event.button.y / 25.0) * 25;
+                    //printf("%d\n", real_y_key);
+                    size_t pos = 0;
+                    std::string delimiter = "|";
+                    std::string value = data.map[std::to_string(real_y_key).c_str()];
+                    if (!data.map[std::to_string(real_y_key).c_str()].empty()) {
+                        pos = value.find(delimiter);
+                        std::string start_x = value.substr(0, pos); // start x
+                        value.erase(0, pos + delimiter.length());
+                        pos = value.find(delimiter);
+                        std::string end_x = value.substr(0, pos); // end x
+                        value.erase(0, pos + delimiter.length());
+                        //printf("%s\n", value.c_str());
+                        //printf("%s\n", start_x.c_str());
+                        int startX = std::stoi(start_x);
+                        int endX = std::stoi(end_x);
+                        if (real_y_key <= 600 && event.button.x >= startX && event.button.x <= endX) {
+                            //printf("%s , %s\n", std::to_string(real_y_key).c_str(), data.map[std::to_string(real_y_key).c_str()].c_str());
+                            //printf("It's working!!!\n");
+                            render(renderer, &data, value);
+                        }
+                    }
                     
                 }
                 break;
             case SDL_MOUSEMOTION: // move
-                if (event.motion.x >= 20 && event.motion.x <= 400 && event.motion.y >= 40 && event.motion.y <= 65) {
-                    
-                }
+                
                 //render(renderer, &data);
                 break;
         }
@@ -84,40 +112,79 @@ void initialize(SDL_Renderer *renderer, AppData *data_ptr)
     SDL_Surface *codeSur = IMG_Load("resrc/images/code.png");
     data_ptr->code = SDL_CreateTextureFromSurface(renderer, codeSur);
     SDL_FreeSurface(codeSur);
+
     SDL_Surface *imageSur = IMG_Load("resrc/images/image.png");
     data_ptr->image = SDL_CreateTextureFromSurface(renderer, imageSur);
     SDL_FreeSurface(imageSur);
+
     SDL_Surface *dirSur = IMG_Load("resrc/images/directory.png");
     data_ptr->dir = SDL_CreateTextureFromSurface(renderer, dirSur);
     SDL_FreeSurface(dirSur);
+
     SDL_Surface *exeSur = IMG_Load("resrc/images/exe.png");
     data_ptr->exe = SDL_CreateTextureFromSurface(renderer, exeSur);
     SDL_FreeSurface(exeSur);
+
     SDL_Surface *otherSur = IMG_Load("resrc/images/others.png");
     data_ptr->other = SDL_CreateTextureFromSurface(renderer, otherSur);
     SDL_FreeSurface(otherSur);
+
     SDL_Surface *videoSur = IMG_Load("resrc/images/video.png");
     data_ptr->video = SDL_CreateTextureFromSurface(renderer, videoSur);
     SDL_FreeSurface(videoSur);
+
+    SDL_Surface *openSur = IMG_Load("resrc/images/open.png");
+    data_ptr->open = SDL_CreateTextureFromSurface(renderer, openSur);
+    SDL_FreeSurface(openSur);
+
+    SDL_Surface *upSur = IMG_Load("resrc/images/up.png");
+    data_ptr->up = SDL_CreateTextureFromSurface(renderer, upSur);
+    SDL_FreeSurface(upSur);
+
+    SDL_Surface *downSur = IMG_Load("resrc/images/down.png");
+    data_ptr->down = SDL_CreateTextureFromSurface(renderer, downSur);
+    SDL_FreeSurface(downSur);
 
     data_ptr->font = TTF_OpenFont("resrc/OpenSans-Regular.ttf", 18);
     
 }
 
-void render(SDL_Renderer *renderer, AppData *data_ptr)
+void render(SDL_Renderer *renderer, AppData *data_ptr, std::string dir)
 {
     SDL_SetRenderDrawColor(renderer, 235, 235, 235, 255);
     // erase renderer content
     SDL_RenderClear(renderer);
+    data_ptr->map.clear();
+
+    SDL_Rect openRect;
+    openRect.x = 750;
+    openRect.y = 15;
+    openRect.w = 25;
+    openRect.h = 25;
+    SDL_RenderCopy(renderer, data_ptr->open, NULL, &openRect); // open recursive
+
+    SDL_Rect upRect;
+    upRect.x = 750;
+    upRect.y = 530;
+    upRect.w = 25;
+    upRect.h = 25;
+    SDL_RenderCopy(renderer, data_ptr->up, NULL, &upRect); // up button
+
+    SDL_Rect downRect;
+    downRect.x = 750;
+    downRect.y = 560;
+    downRect.w = 25;
+    downRect.h = 25;
+    SDL_RenderCopy(renderer, data_ptr->down, NULL, &downRect); // down button
+
     SDL_Rect startRect;
     startRect.x = 40;
-    startRect.y = 40;
+    startRect.y = 0;
     startRect.w = 20;
     startRect.h = 20;
-    char *home = getenv("HOME");
     //std::string dirname(home);
-    std::string dirname = "/home/duke/Desktop";
-    listDirectory(dirname, 0, startRect, renderer, data_ptr);
+    //std::string dirname = "/home/duke/Desktop";
+    listDirectory(dir, 0, startRect, renderer, data_ptr);
     // show rendered frame
     SDL_RenderPresent(renderer);
 }
@@ -143,25 +210,33 @@ int listDirectory(std::string dirname, int loop, SDL_Rect startRect, SDL_Rendere
         int file_err;
         //SDL_Rect textRectNew = startRect;
         for (int i = 0; i < file_list.size(); i++) {
-            if (file_list[i] != ".") {
+            if (file_list[i].substr(0, 1) != "." || file_list[i] == "..") { // skip folders start with '.', those killed my VM 6 times!!
                 std::string full_path = dirname + "/" + file_list[i];
                 file_err = stat(full_path.c_str(), &file_info);
                 if (file_err) {
                     fprintf(stderr, "Uh oh! Should not get here\n");
                 } else if (S_ISDIR(file_info.st_mode)) {
                     startRect.x += 20 * loop;
-                    SDL_RenderCopy(renderer, data_ptr->dir, NULL, &startRect);
+                    int start_x = startRect.x; // x after indent
+                    SDL_RenderCopy(renderer, data_ptr->dir, NULL, &startRect); // icon
                     startRect.x += 30;
                     SDL_Color color = {0, 0, 0};
                     SDL_Surface *dir_surf = TTF_RenderText_Solid(data_ptr->font, file_list[i].c_str(), color);
                     SDL_Texture *dir_string= SDL_CreateTextureFromSurface(renderer, dir_surf);
                     SDL_FreeSurface(dir_surf);
                     SDL_QueryTexture(dir_string, NULL, NULL, &(startRect.w), &(startRect.h));
-                    SDL_RenderCopy(renderer, dir_string, NULL, &startRect);
+                    SDL_RenderCopy(renderer, dir_string, NULL, &startRect); // file name
+                    
+                    int old_x = startRect.x;
+                    int end_x = old_x + startRect.w;
+                    if (startRect.y <= 600) {
+                        std::string key = std::to_string(startRect.y);
+                        data_ptr->map[key] = std::to_string(start_x) + "|" + std::to_string(end_x) + "|" + full_path;
+                        //printf("%s , %s\n", key.c_str(), data_ptr->map[key].c_str());
+                    }
+                    startRect.x = 600;
                     startRect.w = 20;
                     startRect.h = 20;
-                    int old_x = startRect.x;
-                    startRect.x = 600;
                     char *modeval = (char*)malloc(sizeof(char) * 9 + 1);
                     modeval[0] = (file_info.st_mode & S_IRUSR) ? 'r' : '-';
                     modeval[1] = (file_info.st_mode & S_IWUSR) ? 'w' : '-';
