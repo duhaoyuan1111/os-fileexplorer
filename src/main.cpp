@@ -27,6 +27,7 @@ typedef struct AppData {
     SDL_Texture *down;
     std::map<std::string, std::string> map;
     bool open_flag = false;
+    int position = 0;
 
 } AppData;
 
@@ -75,7 +76,8 @@ int main(int argc, char **argv)
                         //printf("It's here!!!\n");
                         if (data.open_flag) {
                             data.open_flag = false;
-                            value = data.map["0"];
+                            int tempNum = 0 - (data.position * 250);
+                            value = data.map[std::to_string(tempNum)];
                             pos = value.find(delimiter);
                             value.erase(0, pos + delimiter.length());
                             pos = value.find(delimiter);
@@ -91,10 +93,12 @@ int main(int argc, char **argv)
                                 }
                             }
                             //printf("%s\n", same_dir.c_str());
+                            data.position = 0;
                             render(renderer, &data, same_dir);
                         } else {
                             data.open_flag = true;
-                            value = data.map["0"];
+                            int tempNum = 0 - (data.position * 250);
+                            value = data.map[std::to_string(tempNum)];
                             pos = value.find(delimiter);
                             value.erase(0, pos + delimiter.length());
                             pos = value.find(delimiter);
@@ -111,6 +115,50 @@ int main(int argc, char **argv)
                             }
                             render(renderer, &data, same_dir);
                         }
+                    } else if (event.button.y >= 530 && event.button.y <= 555 && event.button.x >= 750 && event.button.x <= 775) {
+                        // up
+                        int tempNum = 0 - (data.position * 250);
+                        value = data.map[std::to_string(tempNum)];
+                        pos = value.find(delimiter);
+                        value.erase(0, pos + delimiter.length());
+                        pos = value.find(delimiter);
+                        value.erase(0, pos + delimiter.length());
+                        std::string same_dir = value;
+                        if (same_dir.back() == '.') {
+                            same_dir.pop_back();
+                            if (same_dir.back() == '.') {
+                                same_dir.pop_back();
+                                if (same_dir.back() == '/') {
+                                    same_dir.pop_back();
+                                }
+                            }
+                        }
+                        if (data.position > 0) {
+                            data.position--;
+                        }
+                        //printf("%s\n", same_dir.c_str());
+                        render(renderer, &data, same_dir);
+                    } else if (event.button.y >= 560 && event.button.y <= 585 && event.button.x >= 750 && event.button.x <= 775) {
+                        // down
+                        int tempNum = 0 - (data.position * 250);
+                        value = data.map[std::to_string(tempNum)];
+                        pos = value.find(delimiter);
+                        value.erase(0, pos + delimiter.length());
+                        pos = value.find(delimiter);
+                        value.erase(0, pos + delimiter.length());
+                        std::string same_dir = value;
+                        if (same_dir.back() == '.') {
+                            same_dir.pop_back();
+                            if (same_dir.back() == '.') {
+                                same_dir.pop_back();
+                                if (same_dir.back() == '/') {
+                                    same_dir.pop_back();
+                                }
+                            }
+                        }
+                        data.position++;
+                        //printf("%s\n", same_dir.c_str());
+                        render(renderer, &data, same_dir);
                     } else if (!data.map[std::to_string(real_y_key).c_str()].empty()) {
                         value = data.map[std::to_string(real_y_key).c_str()];
                         pos = value.find(delimiter);
@@ -126,11 +174,10 @@ int main(int argc, char **argv)
                         if (real_y_key <= 600 && event.button.x >= startX && event.button.x <= endX) {
                             //printf("%s , %s\n", std::to_string(real_y_key).c_str(), data.map[std::to_string(real_y_key).c_str()].c_str());
                             //printf("It's working!!!\n");
+                            data.position = 0;
                             render(renderer, &data, value);
                         }
                     }
-                    
-                    
                 }
                 break;
             case SDL_MOUSEMOTION: // move
@@ -223,7 +270,8 @@ void render(SDL_Renderer *renderer, AppData *data_ptr, std::string dir)
 
     SDL_Rect startRect;
     startRect.x = 40;
-    startRect.y = 0;
+    startRect.y = 0 - (data_ptr->position * 250);
+    //printf("%d\n", startRect.y);
     startRect.w = 20;
     startRect.h = 20;
     //std::string dirname(home);
@@ -253,7 +301,9 @@ int listDirectory(std::string dirname, int loop, SDL_Rect startRect, SDL_Rendere
         struct stat file_info;
         int file_err;
         //SDL_Rect textRectNew = startRect;
+        
         for (int i = 0; i < file_list.size(); i++) {
+            //if (file_list[i] != ".") {
             if (file_list[i].substr(0, 1) != "." || file_list[i] == "..") { // skip folders start with '.', those killed my VM 6 times!!
                 std::string full_path = dirname + "/" + file_list[i];
                 file_err = stat(full_path.c_str(), &file_info);
@@ -273,11 +323,11 @@ int listDirectory(std::string dirname, int loop, SDL_Rect startRect, SDL_Rendere
                     
                     int old_x = startRect.x;
                     int end_x = old_x + startRect.w;
-                    if (startRect.y <= 600) {
-                        std::string key = std::to_string(startRect.y);
-                        data_ptr->map[key] = std::to_string(start_x) + "|" + std::to_string(end_x) + "|" + full_path;
-                        //printf("%s , %s\n", key.c_str(), data_ptr->map[key].c_str());
-                    }
+                    
+                    std::string key = std::to_string(startRect.y);
+                    data_ptr->map[key] = std::to_string(start_x) + "|" + std::to_string(end_x) + "|" + full_path;
+                    //printf("%s , %s\n", key.c_str(), data_ptr->map[key].c_str());
+                    
                     //printf("%s\n", data_ptr->map["0"].c_str());
                     startRect.x = 600;
                     startRect.w = 20;
